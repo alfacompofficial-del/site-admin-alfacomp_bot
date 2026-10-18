@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alfa Comp — Панель Администратора Telegram-бота</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- ВЕРХНЯЯ ШАПКА (HEADER) -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-logo-icon">⚡</div>
+        <div class="brand-text">
+          <div class="brand-title">ALFA COMP <span class="badge-role">ADMIN</span></div>
+          <div class="brand-status" id="webhook-badge">
+            <span class="status-dot green"></span>
+            <span id="webhook-status-text">Webhook 24/7 Активен</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI МЕТРИКИ -->
+      <div class="header-kpi">
+        <div class="kpi-chip" title="Всего пользователей бота">
+          <span class="kpi-icon">👥</span>
+          <span class="kpi-label">Клиенты:</span>
+          <span class="kpi-val" id="kpi-users">0</span>
+        </div>
+        <div class="kpi-chip" title="Товаров в каталоге">
+          <span class="kpi-icon">🛍</span>
+          <span class="kpi-label">Товары:</span>
+          <span class="kpi-val" id="kpi-products">0</span>
+        </div>
+        <div class="kpi-chip" title="Оформлено заказов">
+          <span class="kpi-icon">📦</span>
+          <span class="kpi-label">Заказы:</span>
+          <span class="kpi-val" id="kpi-orders">0</span>
+        </div>
+        <div class="kpi-chip" title="Курс доллара">
+          <span class="kpi-icon">💵</span>
+          <span class="kpi-label">1$ =</span>
+          <span class="kpi-val" id="kpi-rate">12 850 сум</span>
+        </div>
+      </div>
+
+      <!-- НАВИГАЦИЯ ПО РАЗДЕЛАМ -->
+      <nav class="header-nav">
+        <button class="nav-btn active" data-tab="tab-chat" id="btn-nav-chat">
+          <span class="nav-icon">💬</span>
+          <span class="nav-text">Чат с клиентами</span>
+          <span class="nav-badge" id="chat-unread-badge" style="display:none;">0</span>
+        </button>
+        <button class="nav-btn" data-tab="tab-products" id="btn-nav-products">
+          <span class="nav-icon">🛍</span>
+          <span class="nav-text">Товары</span>
+        </button>
+        <button class="nav-btn" data-tab="tab-orders" id="btn-nav-orders">
+          <span class="nav-icon">📦</span>
+          <span class="nav-text">Заказы</span>
+        </button>
+        <button class="nav-btn" data-tab="tab-broadcast" id="btn-nav-broadcast">
+          <span class="nav-icon">📢</span>
+          <span class="nav-text">Рассылка</span>
+        </button>
+        <button class="nav-btn" data-tab="tab-webhook" id="btn-nav-webhook">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-text">24/7 Webhook</span>
+        </button>
+      </nav>
+
+      <!-- ПРАВАЯ ЧАСТЬ ШАПКИ -->
+      <div class="header-user">
+        <button class="btn-icon" id="btn-refresh-all" title="Обновить данные">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+        <div class="admin-profile" title="Администратор">
+          <div class="profile-avatar">B</div>
+          <div class="profile-meta">
+            <span class="profile-name">Bilol</span>
+            <span class="profile-id">ID: 8871425569</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ (ТАБЫ) -->
+    <main class="app-body">
+
+      <!-- ============================================================== -->
+      <!-- ВКЛАДКА 1: ЧАТ С КЛИЕНТАМИ И ПЕРЕПИСКА ОТ ИМЕНИ БОТА           -->
+      <!-- ============================================================== -->
+      <section class="tab-pane active" id="tab-chat">
+        <div class="chat-view-container">
+          <!-- Левая колонка: Список пользователей бота -->
+          <aside class="chat-sidebar">
+            <div class="sidebar-header">
+              <div class="sidebar-title-row">
+                <h3>👥 Клиенты бота</h3>
+                <span class="count-pill" id="users-count-pill">0</span>
+              </div>
+              <div class="search-box">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>
+                </svg>
+                <input type="text" id="user-search-input" placeholder="Поиск по имени, @username, ID...">
+              </div>
+              <div class="filter-pills">
+                <button class="pill-btn active" data-filter="all">Все</button>
+                <button class="pill-btn" data-filter="active">Активные</button>
+                <button class="pill-btn" data-filter="blocked">Заблокированные 🚫</button>
+              </div>
+            </div>
+
+            <div class="users-scroll-list" id="users-list-container">
+              <div class="loading-state">
+                <div class="spinner"></div>
+                <span>Загрузка клиентов...</span>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Правая колонка: Окно переписки -->
+          <section class="chat-main">
+            <!-- Плейсхолдер, если пользователь не выбран -->
+            <div class="chat-placeholder" id="chat-empty-placeholder">
+              <div class="placeholder-icon">💬</div>
+              <h2>Выберите клиента для общения</h2>
+              <p>Нажмите на любого пользователя в списке слева, чтобы читать переписку, отвечать от имени администратора, изменять/удалять сообщения или заблокировать пользователя.</p>
+              <div class="placeholder-tip">
+                💡 <b>Все сообщения доставляются пользователю мгновенно в Telegram!</b>
+              </div>
+            </div>
+
+            <!-- Активное окно диалога -->
+            <div class="chat-active-card" id="chat-active-card" style="display:none;">
+              <!-- Шапка диалога -->
+              <header class="chat-header">
+                <div class="chat-user-info">
+                  <div class="chat-avatar" id="active-chat-avatar">U</div>
+                  <div class="chat-meta">
+                    <div class="chat-user-title">
+                      <h3 id="active-chat-name">Имя пользователя</h3>
+                      <span class="badge-status-pill" id="active-chat-status">🟢 В сети</span>
+                    </div>
+                    <div class="chat-user-sub">
+                      <span id="active-chat-username">@username</span> • 
+                      <span id="active-chat-phone">тел: не указан</span> • 
+                      <span>ID: <code id="active-chat-id">000000</code></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chat-header-actions">
+                  <!-- КНОПКА ЗАБЛОКИРОВАТЬ / РАЗБЛОКИРОВАТЬ ПОЛЬЗОВАТЕЛЯ -->
+                  <button class="btn-block-action" id="btn-toggle-block" title="Заблокировать: бот перестанет отвечать">
+                    <span class="action-icon">🚫</span>
+                    <span id="block-btn-text">Заблокировать</span>
+                  </button>
+                  <a class="btn-outline-small" id="btn-open-tg" href="#" target="_blank">
+                    <span>✈️ Telegram</span>
+                  </a>
+                </div>
+              </header>
+
+              <!-- Контейнер сообщений -->
+              <div class="chat-messages-container" id="chat-messages-container">
+                <!-- Сообщения подгружаются динамически -->
+              </div>
+
+              <!-- Панель быстрых ответов -->
+              <div class="quick-replies-bar">
+                <span class="quick-title">Быстрые ответы:</span>
+                <button class="quick-chip" data-msg="Здравствуйте! Чем я могу вам помочь? 😊">Здравствуйте!</button>
+                <button class="quick-chip" data-msg="Товар есть в наличии в нашем магазине в Ташкенте! 👍">В наличии</button>
+                <button class="quick-chip" data-msg="Ваш заказ передан курьеру и скоро будет у вас! 🚗">Заказ в пути</button>
+                <button class="quick-chip" data-msg="Спасибо за покупку в Alfa Comp! Будем рады видеть вас снова. 🎉">Спасибо!</button>
+              </div>
+
+              <!-- Форма ввода и отправки ответа -->
+              <div class="chat-input-bar">
+                <textarea 
+                  id="chat-message-input" 
+                  rows="2" 
+                  placeholder="Напишите ответ клиенту от имени бота (Enter для отправки)..."
+                ></textarea>
+                <button class="btn-send-msg" id="btn-send-message" title="Отправить сообщение (Enter)">
+                  <span>Отправить</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- ВКЛАДКА 2: УПРАВЛЕНИЕ ТОВАРАМИ МАГАЗИНА (PRODUCTS)             -->
+      <!-- ============================================================== -->
+      <section class="tab-pane" id="tab-products">
+        <div class="panel-section-container">
+          <div class="section-topbar">
+            <div>
+              <h2>🛍 Управление товарами Alfa Comp</h2>
+              <p class="section-subtitle">Добавляйте новые товары, указывайте бренд, цену, фото и настраивайте порядок вывода ("каким по счету должен быть")</p>
+            </div>
+            <!-- КНОПКА ДОБАВИТЬ ТОВАР -->
+            <button class="btn-primary" id="btn-open-add-product">
+              <span class="btn-icon">➕</span>
+              <span>Добавить новый товар</span>
+            </button>
+          </div>
+
+          <!-- Фильтры и поиск товаров -->
+          <div class="filter-toolbar">
+            <div class="toolbar-search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>
+              </svg>
+              <input type="text" id="prod-filter-search" placeholder="Поиск по названию или бренду...">
+            </div>
+            <div class="toolbar-selects">
+              <select id="prod-filter-category">
+                <option value="">Все категории</option>
+              </select>
+              <select id="prod-filter-brand">
+                <option value="">Все бренды</option>
+              </select>
+              <select id="prod-filter-stock">
+                <option value="all">Любое наличие</option>
+                <option value="in_stock">✅ Только в наличии</option>
+                <option value="out_stock">❌ Нет в наличии</option>
+              </select>
+              <select id="prod-sort">
+                <option value="priority_asc">🔢 По счету (Приоритет)</option>
+                <option value="price_asc">💵 Сначала недорогие</option>
+                <option value="price_desc">💎 Сначала дорогие</option>
+                <option value="name_asc">🔤 По алфавиту</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Таблица / Сетка товаров -->
+          <div class="products-table-wrapper">
+            <table class="products-table">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Счет #</th>
+                  <th style="width: 60px;">Фото</th>
+                  <th>Название товара</th>
+                  <th>Бренд</th>
+                  <th>Категория</th>
+                  <th>Цена (USD / UZS)</th>
+                  <th>Наличие</th>
+                  <th style="text-align: right; width: 140px;">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body">
+                <!-- Рендерится скриптом -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- ВКЛАДКА 3: УПРАВЛЕНИЕ ЗАКАЗАМИ (ORDERS)                         -->
+      <!-- ============================================================== -->
+      <section class="tab-pane" id="tab-orders">
+        <div class="panel-section-container">
+          <div class="section-topbar">
+            <div>
+              <h2>📦 Заказы покупателей</h2>
+              <p class="section-subtitle">Просматривайте поступившие через Telegram заказы, меняйте статус и пишите клиенту в 1 клик</p>
+            </div>
+            <div class="order-stats-badges">
+              <span class="badge-tag yellow" id="orders-count-new">Новые: 0</span>
+              <span class="badge-tag green" id="orders-count-total">Всего: 0</span>
+            </div>
+          </div>
+
+          <div class="orders-cards-grid" id="orders-grid-container">
+            <!-- Заказы рендерятся скриптом -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- ВКЛАДКА 4: МАССОВАЯ РАССЫЛКА (BROADCAST)                        -->
+      <!-- ============================================================== -->
+      <section class="tab-pane" id="tab-broadcast">
+        <div class="panel-section-container" style="max-width: 800px; margin: 0 auto;">
+          <div class="section-topbar">
+            <div>
+              <h2>📢 Массовая рассылка клиентам</h2>
+              <p class="section-subtitle">Отправьте рекламную акцию, скидки или важное объявление всем пользователям вашего бота</p>
+            </div>
+          </div>
+
+          <div class="card broadcast-card">
+            <div class="form-group">
+              <label>Текст сообщения рассылки <span class="req">*</span></label>
+              <textarea id="broadcast-text" rows="5" placeholder="Напишите текст рассылки (поддерживаются эмодзи)..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Ссылка на фото / баннер (необязательно)</label>
+              <input type="url" id="broadcast-photo-url" placeholder="https://example.com/banner.jpg">
+            </div>
+            <div class="broadcast-preview" id="broadcast-preview-box">
+              <div class="preview-title">Предпросмотр сообщения:</div>
+              <div class="preview-bubble" id="broadcast-preview-content">
+                Текст появится здесь...
+              </div>
+            </div>
+            <div class="broadcast-actions">
+              <button class="btn-primary" id="btn-start-broadcast">
+                <span>🚀 Отправить всем клиентам</span>
+              </button>
+            </div>
+            <div class="broadcast-progress" id="broadcast-progress-box" style="display:none;">
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="broadcast-progress-fill" style="width: 0%;"></div>
+              </div>
+              <div class="progress-text" id="broadcast-progress-text">Отправка... 0 / 0</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- ВКЛАДКА 5: 24/7 WEBHOOK И НАСТРОЙКИ СЕРВЕРА                    -->
+      <!-- ============================================================== -->
+      <section class="tab-pane" id="tab-webhook">
+        <div class="panel-section-container" style="max-width: 900px; margin: 0 auto;">
+          <div class="section-topbar">
+            <div>
+              <h2>⚙️ Настройки сервера и 24/7 Webhook</h2>
+              <p class="section-subtitle">Управление прямым подключением бота к серверу Supabase без оплаты VPS и хостингов</p>
+            </div>
+          </div>
+
+          <!-- КАРТОЧКА СТАТУСА WEBHOOK -->
+          <div class="card webhook-status-card">
+            <div class="card-header-flex">
+              <div>
+                <h3 class="card-title">🌐 Статус Telegram Webhook</h3>
+                <p class="card-desc">Прямое подключение Telegram к Edge Function Supabase (работает круглосуточно при выключенном ПК)</p>
+              </div>
+              <button class="btn-secondary" id="btn-check-webhook-now">
+                <span>🔄 Проверить статус</span>
+              </button>
+            </div>
+
+            <div class="webhook-info-grid">
+              <div class="info-item">
+                <span class="info-label">Текущий Webhook URL:</span>
+                <span class="info-value code" id="wb-current-url">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Сообщений в очереди:</span>
+                <span class="info-value" id="wb-pending-count">0</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Последняя ошибка:</span>
+                <span class="info-value" id="wb-last-error">Ошибок нет ✅</span>
+              </div>
+            </div>
+
+            <div class="webhook-actions-row">
+              <button class="btn-success" id="btn-set-webhook-supabase">
+                <span>🚀 Подключить Webhook к Supabase (24/7 Без ПК)</span>
+              </button>
+              <button class="btn-danger-outline" id="btn-delete-webhook">
+                <span>🔌 Отключить Webhook (для python bot.py на ПК)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- КАРТОЧКА ИНСТРУКЦИИ РАЗВЕРТЫВАНИЯ EDGE FUNCTION -->
+          <div class="card deployment-guide-card">
+            <h3 class="card-title">📖 Как развернуть Webhook в Supabase за 1 минуту:</h3>
+            <div class="guide-steps">
+              <div class="step-row">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                  <b>Откройте Supabase Dashboard:</b>
+                  <p>Перейдите в проект <a href="https://supabase.com/dashboard/project/ycmohbpxytajjlerxowc/functions" target="_blank">ycmohbpxytajjlerxowc → Edge Functions</a></p>
+                </div>
+              </div>
+              <div class="step-row">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                  <b>Создайте функцию:</b>
+                  <p>Нажмите <b>"New Function"</b>, назовите её <code>telegram-bot</code> и вставьте готовый код из файла <code>supabase/functions/telegram-bot/index.ts</code>.</p>
+                  <button class="btn-secondary-small" id="btn-copy-edge-function-code">📋 Скопировать код функции</button>
+                </div>
+              </div>
+              <div class="step-row">
+                <div class="step-num">3</div>
+                <div class="step-body">
+                  <b>Активируйте Webhook:</b>
+                  <p>Нажмите зелёную кнопку <b>"🚀 Подключить Webhook к Supabase"</b> выше — бот мгновенно начнет принимать заказы и сообщения 24/7!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- КАРТОЧКА ПАРАМЕТРОВ ПОДКЛЮЧЕНИЯ И КЛЮЧЕЙ -->
+          <div class="card api-keys-card">
+            <h3 class="card-title">🔑 Параметры подключения к API</h3>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Telegram Bot Token</label>
+                <input type="password" id="cfg-bot-token" value="8977573836:AAFHi0ogLPMmm8cCb2Wv09KJpVToHkAw4R8">
+              </div>
+              <div class="form-group flex-1">
+                <label>Supabase URL</label>
+                <input type="text" id="cfg-supabase-url" value="https://ycmohbpxytajjlerxowc.supabase.co">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Supabase Key (Anon или Service Role)</label>
+              <input type="password" id="cfg-supabase-key" value="sb_publishable_6R5og9bW_71t1T47QqdkSg_Ocab50CV">
+            </div>
+            <div class="form-group">
+              <label>Курс 1 USD к UZS (сум)</label>
+              <input type="number" id="cfg-usd-rate" value="12850">
+            </div>
+            <button class="btn-primary" id="btn-save-api-config">💾 Сохранить настройки в браузере</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ / ИЗМЕНЕНИЕ ТОВАРА                  -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="modal-product" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-product-title">➕ Добавить новый товар</h3>
+        <button class="modal-close-btn" id="btn-close-product-modal">&times;</button>
+      </div>
+      <form id="form-product" class="modal-form">
+        <input type="hidden" id="p-form-id" value="">
+
+        <!-- Название товара -->
+        <div class="form-group">
+          <label>Название товара <span class="req">*</span></label>
+          <input type="text" id="p-form-name" required placeholder="Например: Aula v9 ultra или Bloody R90 Plus">
+        </div>
+
+        <div class="form-row">
+          <!-- Бренд -->
+          <div class="form-group flex-1">
+            <label>Бренд / Производитель</label>
+            <input type="text" id="p-form-brand" list="brands-datalist" placeholder="Например: Bloody, Ion, TP-Link, Aula">
+            <datalist id="brands-datalist">
+              <option value="Bloody">
+              <option value="Ion">
+              <option value="TP-Link">
+              <option value="Hopestar">
+              <option value="Aula">
+              <option value="ATK">
+            </datalist>
+          </div>
+
+          <!-- Категория -->
+          <div class="form-group flex-1">
+            <label>Категория <span class="req">*</span></label>
+            <input type="text" id="p-form-category" list="categories-datalist" required placeholder="Например: Мышки, ИБП, Колонки">
+            <datalist id="categories-datalist">
+              <option value="ИБП">
+              <option value="Мышки">
+              <option value="Wi-Fi роутеры">
+              <option value="Колонки">
+              <option value="Аксессуары">
+              <option value="Комплектующие">
+              <option value="Мониторы">
+              <option value="Deco">
+              <option value="Сеть">
+              <option value="Кронштейны">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Цена -->
+          <div class="form-group flex-1">
+            <label>Цена в $ (USD) <span class="req">*</span></label>
+            <div class="input-with-badge">
+              <input type="number" step="0.5" id="p-form-price" required placeholder="Например: 33">
+              <span class="input-badge" id="p-form-price-uzs">≈ 424 050 сум</span>
+            </div>
+          </div>
+
+          <!-- Каким он по счету должен быть (Приоритет) -->
+          <div class="form-group flex-1">
+            <label>Каким он по счету должен быть? <span class="req">*</span></label>
+            <input type="number" id="p-form-priority" value="0" placeholder="1 = первый в каталоге, 2 = второй...">
+            <small class="form-hint">Чем меньше число, тем выше товар в каталоге бота</small>
+          </div>
+        </div>
+
+        <!-- Наличие на складе -->
+        <div class="form-group checkbox-group">
+          <label class="switch-container">
+            <input type="checkbox" id="p-form-instock" checked>
+            <span class="switch-slider"></span>
+            <span class="switch-label">Товар в наличии (отображается в каталоге)</span>
+          </label>
+        </div>
+
+        <!-- Ссылка на фото -->
+        <div class="form-group">
+          <label>Ссылка на фото товара (URL)</label>
+          <input type="url" id="p-form-photo" placeholder="https://example.com/image.jpg">
+        </div>
+
+        <!-- Описание -->
+        <div class="form-group">
+          <label>Описание / Характеристики (необязательно)</label>
+          <textarea id="p-form-desc" rows="3" placeholder="Краткие характеристики товара для клиента..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btn-cancel-product-modal">Отмена</button>
+          <button type="submit" class="btn-primary" id="btn-save-product">💾 Сохранить товар</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ СООБЩЕНИЯ В TELEGRAM            -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="modal-edit-message" style="display:none;">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>✏️ Изменить сообщение в Telegram</h3>
+        <button class="modal-close-btn" id="btn-close-edit-modal">&times;</button>
+      </div>
+      <form id="form-edit-message" class="modal-form">
+        <input type="hidden" id="edit-msg-id" value="">
+        <input type="hidden" id="edit-msg-tg-id" value="">
+        <input type="hidden" id="edit-msg-chat-id" value="">
+
+        <div class="form-group">
+          <label>Текст сообщения (изменится прямо в Telegram у клиента):</label>
+          <textarea id="edit-msg-text" rows="4" required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btn-cancel-edit-modal">Отмена</button>
+          <button type="submit" class="btn-primary">💾 Сохранить изменения</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast уведомления -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Подключение логики админ-панели -->
+  <script src="app.js"></script>
+</body>
+</html>
